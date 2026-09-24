@@ -34,6 +34,10 @@ li:first-child{border-top:0}
 li input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:none;cursor:pointer}
 li label{flex:1;cursor:pointer}
 li .hint{display:block;color:var(--muted);font-size:14px}
+li .due{display:inline-block;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--muted);margin:2px 0}
+li .due.now{color:var(--amber)}
+li .tpl{margin-top:8px;padding:10px 12px;background:var(--accent-soft);border-radius:8px;font-size:14px;display:grid;gap:6px;justify-items:start}
+li .tpl p{margin:0}
 li.done label{color:var(--done);text-decoration:line-through}
 li .del{border:0;background:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px 6px;visibility:hidden}
 .editing li .del{visibility:visible}
@@ -84,6 +88,9 @@ const DEFAULT_TASKS = [
   {id:"m1",freq:"monthly",group:"Families",text:"Progress check / conferences",hint:""},
   {id:"m2",freq:"monthly",group:"Team",text:"Payroll & timesheets review",hint:""},
   {id:"m3",freq:"monthly",group:"Center",text:"Supplies & inventory order",hint:""},
+  {id:"h1",freq:"monthly",group:"Holds",due:"lastweek",text:"Pull the list of holds ending this month",hint:"Who is coming off hold and re-enrolling on the 1st"},
+  {id:"h2",freq:"monthly",group:"Holds",due:"lastweek",text:"Text families whose hold is ending",hint:"Send early in the last week so they have time to respond",template:"Hello! This is a reminder that your hold is ending soon, and you will be re-enrolled at the start of next month. Please reply if you have any questions or need to make changes. Thank you!"},
+  {id:"h3",freq:"monthly",group:"Holds",due:"lastweek",text:"Follow up on replies before the 1st",hint:"Note who confirms, extends the hold or cancels; update Appointy"},
   {id:"m4",freq:"monthly",group:"Center",text:"Monthly numbers / report to owner",hint:"Enrollment, retention, revenue"},
 ];
 const FREQS = {daily:"Today",weekly:"This week",monthly:"This month"};
@@ -103,6 +110,8 @@ function periodLabel(freq){
   const k=keyFor("weekly").slice(2).split("-"); const m=new Date(+k[0],+k[1]-1,+k[2]);
   return "Week of "+m.toLocaleDateString(undefined,{month:"short",day:"numeric"});
 }
+function lastWeekStart(d=new Date()){return new Date(d.getFullYear(),d.getMonth()+1,-6)}
+function inLastWeek(d=new Date()){return d>=lastWeekStart(d)}
 function load(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
 
@@ -134,9 +143,15 @@ function render(){
       const cb=document.createElement("input"); cb.type="checkbox"; cb.id="cb-"+t.id; cb.checked=!!c[t.id];
       cb.onchange=()=>{const k=keyFor(tab); checks[k]={...(checks[k]||{}),[t.id]:cb.checked}; persistChecks(tab); render()};
       const lb=document.createElement("label"); lb.htmlFor=cb.id; lb.textContent=t.text;
+      if(t.due==="lastweek"){const w=document.createElement("span");w.className="due"+(inLastWeek()?" now":"");
+        w.textContent=inLastWeek()?"Due now · last week of the month":"Last week of the month (starts "+lastWeekStart().toLocaleDateString(undefined,{month:"short",day:"numeric"})+")";lb.appendChild(w)}
       if(t.hint){const s=document.createElement("span");s.className="hint";s.textContent=t.hint;lb.appendChild(s)}
       const del=document.createElement("button"); del.className="del"; del.type="button"; del.textContent="×"; del.setAttribute("aria-label","Remove "+t.text);
       del.onclick=()=>{tasks=tasks.filter(x=>x.id!==t.id); persistTasks(); render()};
+      if(t.template){const box=document.createElement("div");box.className="tpl";const q=document.createElement("p");q.textContent=t.template;
+        const cp=document.createElement("button");cp.type="button";cp.className="link";cp.textContent="Copy text";
+        cp.onclick=()=>{navigator.clipboard.writeText(t.template).then(()=>{cp.textContent="Copied"},()=>{const r=document.createRange();r.selectNodeContents(q);const sel=getSelection();sel.removeAllRanges();sel.addRange(r);cp.textContent="Selected, press copy"});setTimeout(()=>cp.textContent="Copy text",2500)};
+        box.append(q,cp);lb.appendChild(box)}
       li.append(cb,lb,del); ul.appendChild(li);
     }
     sec.appendChild(ul); host.appendChild(sec);
