@@ -1,0 +1,170 @@
+<title>Director's Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+:root{
+  --ground:#f2f4f3; --panel:#ffffff; --ink:#1c2830; --muted:#5d6b72; --line:#dde3e1;
+  --accent:#0f6e6a; --accent-soft:#e1efed; --amber:#b86f1c; --done:#8a969b;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#121a1e; --panel:#1a252a; --ink:#e6ecea; --muted:#9aa8ad; --line:#2b383e;
+  --accent:#4fb8ae; --accent-soft:#1d3634; --amber:#e0a458; --done:#6d7a7f; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --ground:#121a1e; --panel:#1a252a; --ink:#e6ecea; --muted:#9aa8ad; --line:#2b383e;
+  --accent:#4fb8ae; --accent-soft:#1d3634; --amber:#e0a458; --done:#6d7a7f; color-scheme:dark;}
+body{background:var(--ground);color:var(--ink);font:16px/1.5 "Source Sans 3",system-ui,sans-serif;padding-inline:16px;padding-block:24px 48px}
+.wrap{max-width:760px;margin:0 auto;display:grid;gap:20px}
+h1{font-family:"Bricolage Grotesque",Georgia,serif;font-size:2rem;margin:0;line-height:1.1;text-wrap:balance}
+header p{margin:4px 0 0;color:var(--muted)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:8px 16px;font:600 15px "Source Sans 3",sans-serif;cursor:pointer;display:flex;gap:8px;align-items:center}
+.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--ground)}
+.tab .n{font-variant-numeric:tabular-nums;font-weight:400;opacity:.85}
+.period{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.period h2{font-family:"Bricolage Grotesque",Georgia,serif;font-size:1.3rem;margin:0}
+.period span{color:var(--muted);font-variant-numeric:tabular-nums}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.group{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 0}
+.group h3{margin:0;padding:10px 16px 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber)}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;gap:12px;align-items:flex-start;padding:10px 16px;border-top:1px solid var(--line)}
+li:first-child{border-top:0}
+li input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:none;cursor:pointer}
+li label{flex:1;cursor:pointer}
+li .hint{display:block;color:var(--muted);font-size:14px}
+li.done label{color:var(--done);text-decoration:line-through}
+li .del{border:0;background:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px 6px;visibility:hidden}
+.editing li .del{visibility:visible}
+form{display:grid;grid-template-columns:1fr 1fr auto;gap:8px}
+form input,form select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);min-width:0}
+form input#newText{grid-column:1/-1}
+button.primary{font:600 15px "Source Sans 3",sans-serif;background:var(--accent);color:var(--ground);border:0;border-radius:8px;padding:8px 16px;cursor:pointer}
+.tools{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:14px}
+.link{background:none;border:0;color:var(--accent);font:600 14px "Source Sans 3",sans-serif;cursor:pointer;padding:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:480px){form{grid-template-columns:1fr}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Director's Desk</h1>
+    <p id="today"></p>
+  </header>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div class="period"><h2 id="pTitle"></h2><span id="pCount"></span></div>
+  <div class="bar"><i id="pBar"></i></div>
+  <div id="list"></div>
+  <div class="tools">
+    <span id="sync">Checkmarks reset automatically each new day, week and month.</span>
+    <button class="link" id="editBtn" type="button">Edit tasks</button>
+  </div>
+  <form id="addForm" hidden>
+    <input id="newText" placeholder="New task, e.g. Review Apptoto no-show report" required>
+    <select id="newFreq"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select>
+    <input id="newGroup" placeholder="Group (e.g. Families)">
+    <button class="primary" type="submit">Add</button>
+  </form>
+</div>
+
+<script>
+const DEFAULT_TASKS = [
+  {id:"d1",freq:"daily",group:"Families",text:"Care calls",hint:"Check in with families on today's list; log notes"},
+  {id:"d2",freq:"daily",group:"Families",text:"Apptoto calls & confirmations",hint:"Review confirmations, follow up on unconfirmed and cancellations"},
+  {id:"d3",freq:"daily",group:"Scheduling",text:"Review today's schedule",hint:"Staffing, room/session coverage, open slots"},
+  {id:"d4",freq:"daily",group:"Scheduling",text:"Fill cancellations & reschedule",hint:""},
+  {id:"d5",freq:"daily",group:"Center",text:"Return voicemails & emails",hint:""},
+  {id:"d6",freq:"daily",group:"Center",text:"Open / close checklist",hint:""},
+  {id:"w1",freq:"weekly",group:"Scheduling",text:"Build next week's schedule",hint:""},
+  {id:"w2",freq:"weekly",group:"Families",text:"Follow up on new inquiries & leads",hint:""},
+  {id:"w3",freq:"weekly",group:"Team",text:"Staff check-ins / team meeting",hint:""},
+  {id:"w4",freq:"weekly",group:"Center",text:"Review attendance & no-shows",hint:""},
+  {id:"w5",freq:"weekly",group:"Center",text:"Payments & billing follow-up",hint:""},
+  {id:"m1",freq:"monthly",group:"Families",text:"Progress check / conferences",hint:""},
+  {id:"m2",freq:"monthly",group:"Team",text:"Payroll & timesheets review",hint:""},
+  {id:"m3",freq:"monthly",group:"Center",text:"Supplies & inventory order",hint:""},
+  {id:"m4",freq:"monthly",group:"Center",text:"Monthly numbers / report to owner",hint:"Enrollment, retention, revenue"},
+];
+const FREQS = {daily:"Today",weekly:"This week",monthly:"This month"};
+let tasks = DEFAULT_TASKS.slice(), checks = {}, tab = "daily", editing = false, db = null;
+
+function pad(n){return String(n).padStart(2,"0")}
+function keyFor(freq, d=new Date()){
+  if(freq==="daily") return `d-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  if(freq==="monthly") return `m-${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+  const m=new Date(d); m.setDate(d.getDate()-((d.getDay()+6)%7)); // Monday
+  return `w-${m.getFullYear()}-${pad(m.getMonth()+1)}-${pad(m.getDate())}`;
+}
+function periodLabel(freq){
+  const d=new Date();
+  if(freq==="daily") return d.toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"});
+  if(freq==="monthly") return d.toLocaleDateString(undefined,{month:"long",year:"numeric"});
+  const k=keyFor("weekly").slice(2).split("-"); const m=new Date(+k[0],+k[1]-1,+k[2]);
+  return "Week of "+m.toLocaleDateString(undefined,{month:"short",day:"numeric"});
+}
+function load(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+
+async function persistTasks(){ save("dd-tasks",tasks); if(db) try{await db.doc("config/tasks").set({list:tasks})}catch{} }
+async function persistChecks(freq){ const k=keyFor(freq); save("dd-"+k,checks[k]||{}); if(db) try{await db.doc("checks/"+k).set({done:checks[k]||{}})}catch{} }
+
+function render(){
+  document.getElementById("today").textContent = new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+  const tabs=document.getElementById("tabs"); tabs.innerHTML="";
+  for(const f of Object.keys(FREQS)){
+    const list=tasks.filter(t=>t.freq===f), c=checks[keyFor(f)]||{}, left=list.filter(t=>!c[t.id]).length;
+    const b=document.createElement("button"); b.className="tab"; b.type="button"; b.setAttribute("role","tab");
+    b.setAttribute("aria-selected",f===tab); b.innerHTML=`${FREQS[f]} <span class="n">${left} left</span>`;
+    b.onclick=()=>{tab=f;save("dd-tab",f);render()}; tabs.appendChild(b);
+  }
+  const list=tasks.filter(t=>t.freq===tab), c=checks[keyFor(tab)]||{}, done=list.filter(t=>c[t.id]).length;
+  document.getElementById("pTitle").textContent=periodLabel(tab);
+  document.getElementById("pCount").textContent=`${done} of ${list.length} done`;
+  document.getElementById("pBar").style.width=list.length?`${done/list.length*100}%`:"0";
+  const host=document.getElementById("list"); host.innerHTML=""; host.className=editing?"editing":"";
+  const groups=[...new Set(list.map(t=>t.group||"Other"))];
+  host.style.display="grid"; host.style.gap="14px";
+  for(const g of groups){
+    const sec=document.createElement("section"); sec.className="group";
+    const h=document.createElement("h3"); h.textContent=g; sec.appendChild(h);
+    const ul=document.createElement("ul");
+    for(const t of list.filter(t=>(t.group||"Other")===g)){
+      const li=document.createElement("li"); if(c[t.id]) li.className="done";
+      const cb=document.createElement("input"); cb.type="checkbox"; cb.id="cb-"+t.id; cb.checked=!!c[t.id];
+      cb.onchange=()=>{const k=keyFor(tab); checks[k]={...(checks[k]||{}),[t.id]:cb.checked}; persistChecks(tab); render()};
+      const lb=document.createElement("label"); lb.htmlFor=cb.id; lb.textContent=t.text;
+      if(t.hint){const s=document.createElement("span");s.className="hint";s.textContent=t.hint;lb.appendChild(s)}
+      const del=document.createElement("button"); del.className="del"; del.type="button"; del.textContent="×"; del.setAttribute("aria-label","Remove "+t.text);
+      del.onclick=()=>{tasks=tasks.filter(x=>x.id!==t.id); persistTasks(); render()};
+      li.append(cb,lb,del); ul.appendChild(li);
+    }
+    sec.appendChild(ul); host.appendChild(sec);
+  }
+}
+
+document.getElementById("editBtn").onclick=()=>{editing=!editing;document.getElementById("addForm").hidden=!editing;
+  document.getElementById("editBtn").textContent=editing?"Done editing":"Edit tasks";document.getElementById("newFreq").value=tab;render()};
+document.getElementById("addForm").onsubmit=e=>{e.preventDefault();
+  const text=document.getElementById("newText").value.trim(); if(!text) return;
+  const freq=document.getElementById("newFreq").value;
+  tasks.push({id:"t"+Date.now(),freq,group:document.getElementById("newGroup").value.trim()||"Other",text,hint:""});
+  document.getElementById("newText").value=""; tab=freq; persistTasks(); render()};
+
+tasks=load("dd-tasks",tasks); tab=load("dd-tab","daily");
+for(const f of Object.keys(FREQS)){const k=keyFor(f);checks[k]=load("dd-"+k,{})}
+render();
+
+(async()=>{
+  db = await window.claude?.use?.("db").catch(()=>null) ?? null;
+  if(!db) return;
+  try{
+    const t=await db.doc("config/tasks").get(); if(t.exists&&Array.isArray(t.data().list)) tasks=t.data().list; else await db.doc("config/tasks").set({list:tasks});
+    for(const f of Object.keys(FREQS)){const k=keyFor(f);const s=await db.doc("checks/"+k).get(); if(s.exists) checks[k]=s.data().done||{}}
+    document.getElementById("sync").textContent="Saved to your account. Checkmarks reset each new day, week and month.";
+    render();
+  }catch{}
+})();
+// roll over at midnight if left open
+setInterval(()=>{for(const f of Object.keys(FREQS)){const k=keyFor(f);if(!(k in checks))checks[k]={}}render()},60000);
+</script>
